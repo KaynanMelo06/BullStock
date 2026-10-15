@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Zero-PII user identity",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "minLength": 3, "maxLength": 20 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "username"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Robotics category / team group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 300 },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "CategoryMember": {
+      "title": "CategoryMember",
+      "description": "Membership document within a category with approval workflow",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "role": { "type": "string", "enum": ["capitao", "membro", "visualizador"] },
+        "status": { "type": "string", "enum": ["pendente", "aprovado", "recusado"] },
+        "requestedAt": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "approvedBy": { "type": "string" }
+      },
+      "required": ["uid", "username", "role", "status"]
+    },
+    "Inventory": {
+      "title": "Inventory",
+      "description": "Inventory container within a category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "maxLength": 250 }
+      },
+      "required": ["name"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Item in inventory",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 20 },
+        "minQuantity": { "type": "number" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "photo": { "type": "string", "maxLength": 80000 }
+      },
+      "required": ["name", "quantity", "unit", "minQuantity"]
+    },
+    "ShoppingList": {
+      "title": "ShoppingList",
+      "description": "Shopping list within a category",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "type": "string", "enum": ["open", "finished"] }
+      },
+      "required": ["name", "status"]
+    }
+  }
+}

@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-bull-bg: #3E0D1E;
+  --color-bull-surface: #57182A;
+  --color-bull-surface-elevated: #5B1B2D;
+  --color-bull-primary: #EDB23A;
+  --color-bull-on-primary: #3E0D1E;
+  --color-bull-text: #F0DCAF;
+  --color-bull-text-muted: rgba(240, 220, 175, 0.65);
+  --color-bull-border: rgba(237, 178, 58, 0.20);
+  --color-bull-alert: #FF6B6B;
+  --color-bull-success: #7BC67E;
+}
+
+:root:not(.dark) {
+  --color-bull-bg: #FBF5E6;
+  --color-bull-surface: #FFFFFF;
+  --color-bull-surface-elevated: #F3EBD8;
+  --color-bull-primary: #8A1F3C;
+  --color-bull-on-primary: #FFFFFF;
+  --color-bull-text: #3E0D1E;
+  --color-bull-text-muted: rgba(62, 13, 30, 0.65);
+  --color-bull-border: rgba(138, 31, 60, 0.20);
+  --color-bull-alert: #D32F2F;
+  --color-bull-success: #2E7D32;
+}
+
+@theme {
+  --color-bull-bg: var(--color-bull-bg);
+  --color-bull-surface: var(--color-bull-surface);
+  --color-bull-surface-elevated: var(--color-bull-surface-elevated);
+  --color-bull-primary: var(--color-bull-primary);
+  --color-bull-on-primary: var(--color-bull-on-primary);
+  --color-bull-text: var(--color-bull-text);
+  --color-bull-text-muted: var(--color-bull-text-muted);
+  --color-bull-border: var(--color-bull-border);
+  --color-bull-alert: var(--color-bull-alert);
+  --color-bull-success: var(--color-bull-success);
+}
+
+body {
+  background-color: var(--color-bull-bg);
+  color: var(--color-bull-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}

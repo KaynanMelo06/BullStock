@@ -1,0 +1,163 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------
+    // Global Default Deny Safety Net
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Helper Functions
+    // ---------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Check if current user is listed in config/superadmins
+    function isSuperadmin() {
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/config/superadmins) &&
+         request.auth.uid in get(/databases/$(database)/documents/config/superadmins).data.uids)
+      );
+    }
+
+    // Helper to get category member document
+    function getCategoryMemberDoc(catId) {
+      return get(/databases/$(database)/documents/categories/$(catId)/members/$(request.auth.uid));
+    }
+
+    function isCategoryMember(catId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/categories/$(catId)/members/$(request.auth.uid));
+    }
+
+    function isApprovedMember(catId) {
+      return isSuperadmin() || (
+        isCategoryMember(catId) && getCategoryMemberDoc(catId).data.status == 'aprovado'
+      );
+    }
+
+    function isCategoryCaptain(catId) {
+      return isSuperadmin() || (
+        isCategoryMember(catId)
+        && getCategoryMemberDoc(catId).data.status == 'aprovado'
+        && getCategoryMemberDoc(catId).data.role == 'capitao'
+      );
+    }
+
+    function canWriteCategoryContent(catId) {
+      return isSuperadmin() || (
+        isCategoryMember(catId)
+        && getCategoryMemberDoc(catId).data.status == 'aprovado'
+        && (getCategoryMemberDoc(catId).data.role == 'capitao' || getCategoryMemberDoc(catId).data.role == 'membro')
+      );
+    }
+
+    // ---------------------------------------------------------
+    // Superadmins Configuration
+    // ---------------------------------------------------------
+    match /config/superadmins {
+      allow read: if isSignedIn();
+      allow write: if isSuperadmin() || !exists(/databases/$(database)/documents/config/superadmins);
+    }
+
+    // ---------------------------------------------------------
+    // Users Collection: Zero PII, stores only username and createdAt
+    // ---------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create, update: if isSignedIn() && request.auth.uid == userId
+        && incoming().username is string
+        && incoming().username.size() >= 3
+        && incoming().username.size() <= 20
+        && incoming().username.matches('^[a-z0-9._-]+$')
+        && incoming().keys().hasOnly(['uid', 'username', 'createdAt']);
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Categories Collection
+    // ---------------------------------------------------------
+    match /categories/{catId} {
+      // All authenticated users can list and view basic category names/metadata
+      allow read: if isSignedIn();
+      // Only superadmin can create, modify, or delete categories
+      allow create, update, delete: if isSuperadmin();
+
+      // -------------------------------------------------------
+      // Category Members Subcollection
+      // -------------------------------------------------------
+      match /members/{memberId} {
+        // Members of category, superadmin, or the pending user viewing their own status
+        allow get: if isSuperadmin() || (isSignedIn() && (request.auth.uid == memberId || isCategoryMember(catId)));
+        allow list: if isSuperadmin() || isCategoryMember(catId);
+
+        // Self-creation: MUST be status 'pendente' and role 'membro', or superadmin
+        allow create: if isSuperadmin() || (
+          isSignedIn() && request.auth.uid == memberId
+          && incoming().uid == memberId
+          && incoming().status == 'pendente'
+          && incoming().role == 'membro'
+          && incoming().username is string
+        );
+
+        // Updates: Only category captain or superadmin can change roles or status
+        // A regular user cannot update their own member document to approve themselves!
+        allow update: if isCategoryCaptain(catId);
+
+        // Delete: Captain, superadmin, or member leaving on their own
+        allow delete: if isCategoryCaptain(catId) || (isSignedIn() && request.auth.uid == memberId);
+      }
+
+      // -------------------------------------------------------
+      // Inventories Subcollection
+      // -------------------------------------------------------
+      match /inventories/{invId} {
+        allow read: if isApprovedMember(catId);
+        allow create, update, delete: if canWriteCategoryContent(catId);
+
+        // -----------------------------------------------------
+        // Items Subcollection
+        // -----------------------------------------------------
+        match /items/{itemId} {
+          allow read: if isApprovedMember(catId);
+          allow create, update, delete: if canWriteCategoryContent(catId);
+
+          // ---------------------------------------------------
+          // Item Movements History Subcollection
+          // ---------------------------------------------------
+          match /history/{histId} {
+            allow read: if isApprovedMember(catId);
+            allow create: if canWriteCategoryContent(catId) && incoming().userId == request.auth.uid;
+            allow update, delete: if isCategoryCaptain(catId);
+          }
+        }
+      }
+
+      // -------------------------------------------------------
+      // Shopping Lists Subcollection
+      // -------------------------------------------------------
+      match /shoppingLists/{listId} {
+        allow read: if isApprovedMember(catId);
+        allow create, update, delete: if canWriteCategoryContent(catId);
+
+        match /items/{itemId} {
+          allow read: if isApprovedMember(catId);
+          allow create, update, delete: if canWriteCategoryContent(catId);
+        }
+      }
+    }
+  }
+}
